@@ -1,0 +1,7 @@
+{
+    "SchemaRegistry": {
+        "Protocol": "SCHEMA_REGISTRY_PROTOCOL",
+        "Hostname": "SCHEMA_REGISTRY_HOSTNAME",
+        "Port": "SCHEMA_REGISTRY_PORT"
+    }
+}

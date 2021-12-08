@@ -4,6 +4,7 @@ import {Unsubscriber} from "apollo-server-core";
 import {ApolloGateway} from '@apollo/gateway';
 import {CompositionUpdate, ManagedGatewayConfig, RemoteGatewayConfig} from "@apollo/gateway/dist/config";
 import got, {Options,Response} from 'got';
+import config from 'config';
 
 interface ServiceDefinition {
     typeDefs: any,
@@ -15,8 +16,8 @@ interface ServiceDefinition {
 export class XJoinGateway extends ApolloGateway {
     private readonly serviceDefinitionsCache: ServiceDefinition[];
 
-    constructor(config?: GatewayConfig) {
-        super(config);
+    constructor(gwConfig?: GatewayConfig) {
+        super(gwConfig);
 
         //TODO: is this necessary?
         this.serviceDefinitionsCache = [
@@ -47,7 +48,7 @@ export class XJoinGateway extends ApolloGateway {
 
 
     //this is where the schemas are loaded from the registry
-    async loadServiceDefinitions(config: RemoteGatewayConfig | ManagedGatewayConfig): Promise<CompositionUpdate> {
+    async loadServiceDefinitions(rgwConfig: RemoteGatewayConfig | ManagedGatewayConfig): Promise<CompositionUpdate> {
         interface Artifact {
             id: string,
             name: string,
@@ -65,7 +66,7 @@ export class XJoinGateway extends ApolloGateway {
             artifacts : Artifact[]
         }
 
-        const prefix = 'http://localhost:1080/apis/registry/v2';
+        const prefix = `${config.get('SchemaRegistry.Protocol')}://${config.get('SchemaRegistry.Hostname')}:${config.get('SchemaRegistry.Port')}/apis/registry/v2`;
 
         const res : Response<ArtifactsResponse> = await got('search/artifacts', {
             prefixUrl: prefix,
@@ -77,6 +78,14 @@ export class XJoinGateway extends ApolloGateway {
 
         const serviceDefinitions : ServiceDefinition[] = [];
         const artifacts : Artifact[] = res.body.artifacts;
+
+        if (artifacts.length == 0) {
+            return {
+                serviceDefinitions: this.serviceDefinitionsCache,
+                isNewSchema: true
+            };
+        }
+
         for (const artifact of artifacts) {
             const gqlRes : Response<string> = await got(`groups/${artifact.groupId}/artifacts/${artifact.id}`, {
                 prefixUrl: prefix

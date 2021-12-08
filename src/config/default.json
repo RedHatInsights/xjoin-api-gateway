@@ -1,0 +1,8 @@
+{
+    "SchemaRegistry": {
+        "Protocol": "http",
+        "Hostname": "localhost",
+        "Port": "1080"
+    },
+    "Port": "4000"
+}

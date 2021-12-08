@@ -3,6 +3,7 @@ import {ServerInfo} from "apollo-server";
 import {ApolloServer} from 'apollo-server';
 import {XJoinGateway} from './xjoingateway';
 import {ApolloGateway, RemoteGraphQLDataSource} from "@apollo/gateway";
+import config from 'config';
 
 const gateway = new XJoinGateway({
   serviceList: [],
@@ -15,6 +16,8 @@ const server = new ApolloServer({
   gateway
 });
 
-server.listen().then((url: ServerInfo) => {
+server.listen({
+  port: config.get("Port")
+}).then((url: ServerInfo) => {
   console.log(`🚀 Server ready at ${url.url}`);
 })
