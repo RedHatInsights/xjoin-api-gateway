@@ -19,8 +19,8 @@ objects:
             livenessProbe:
               failureThreshold: 3
               httpGet:
-                path: /health
-                port: metrics
+                path: /graphql?query=%7B__typename%7D
+                port: ${{PORT}}
                 scheme: HTTP
               initialDelaySeconds: 10
               periodSeconds: 10
@@ -29,8 +29,8 @@ objects:
             readinessProbe:
               failureThreshold: 3
               httpGet:
-                path: /health
-                port: metrics
+                path: /graphql?query=%7B__typename%7D
+                port: ${{PORT}}
                 scheme: HTTP
               initialDelaySeconds: 10
               periodSeconds: 10
@@ -43,6 +43,8 @@ objects:
                 value: ${SCHEMA_REGISTRY_HOSTNAME}
               - name: SCHEMA_REGISTRY_PORT
                 value: ${SCHEMA_REGISTRY_PORT}
+              - name: PORT
+                value: ${PORT}
 
             resources:
               limits:
