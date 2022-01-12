@@ -66,7 +66,7 @@ export class XJoinGateway extends ApolloGateway {
             artifacts : Artifact[]
         }
 
-        const prefix = `${config.get('SchemaRegistry.Protocol')}://${config.get('SchemaRegistry.Hostname')}:${config.get('SchemaRegistry.Port')}/apis/registry/v2`;
+        const prefix = `${config.get('SchemaRegistry.Protocol')}://${config.get('SchemaRegistry.Hostname')}:${config.get('SchemaRegistry.Port')}/apis/registry/v1`;
 
         const res : Response<ArtifactsResponse> = await got('search/artifacts', {
             prefixUrl: prefix,
@@ -106,7 +106,7 @@ export class XJoinGateway extends ApolloGateway {
             }
 
             serviceDefinitions.push({
-                name: artifact.name,
+                name: artifact.id,
                 url: url,
                 typeDefs: parse(gqlRes.body)
             });
