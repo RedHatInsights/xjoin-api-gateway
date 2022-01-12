@@ -87,7 +87,14 @@ export class XJoinGateway extends ApolloGateway {
         }
 
         for (const artifact of artifacts) {
-            const gqlRes : Response<string> = await got(`groups/${artifact.groupId}/artifacts/${artifact.id}`, {
+            let artifactPath = '';
+            if (artifact.groupId !== undefined) {
+                artifactPath = `groups/${artifact.groupId}/artifacts/${artifact.id}`
+            } else {
+                artifactPath = `artifacts/${artifact.id}`
+            }
+
+            const gqlRes : Response<string> = await got(artifactPath, {
                 prefixUrl: prefix
             });
 
