@@ -66,9 +66,9 @@ export class XJoinGateway extends ApolloGateway {
             artifacts : Artifact[]
         }
 
-        const prefix = `${config.get('SchemaRegistry.Protocol')}://${config.get('SchemaRegistry.Hostname')}:${config.get('SchemaRegistry.Port')}/apis/registry/v1`;
+        const prefix = `${config.get('SchemaRegistry.Protocol')}://${config.get('SchemaRegistry.Hostname')}:${config.get('SchemaRegistry.Port')}/apis/registry`;
 
-        const res : Response<ArtifactsResponse> = await got('search/artifacts', {
+        const res : Response<ArtifactsResponse> = await got('v2/search/artifacts?labels=graphql', {
             prefixUrl: prefix,
             responseType: 'json',
             headers: {
@@ -89,9 +89,9 @@ export class XJoinGateway extends ApolloGateway {
         for (const artifact of artifacts) {
             let artifactPath = '';
             if (artifact.groupId !== undefined) {
-                artifactPath = `groups/${artifact.groupId}/artifacts/${artifact.id}`
+                artifactPath = `v1/groups/${artifact.groupId}/artifacts/${artifact.id}`
             } else {
-                artifactPath = `artifacts/${artifact.id}`
+                artifactPath = `v1/artifacts/${artifact.id}`
             }
 
             const gqlRes : Response<string> = await got(artifactPath, {
@@ -99,9 +99,12 @@ export class XJoinGateway extends ApolloGateway {
             });
 
             let url = '';
-            for (const label of artifact.labels) {
-                if (label.startsWith('xjoin.subgraph.url=')) {
-                    url = label.split('xjoin.subgraph.url=')[1]
+
+            if (artifact.labels !== undefined) {
+                for (const label of artifact.labels) {
+                    if (label.startsWith('xjoin-subgraph-url=')) {
+                        url = label.split('xjoin-subgraph-url=')[1]
+                    }
                 }
             }
 
