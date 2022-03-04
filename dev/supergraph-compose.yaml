@@ -1,0 +1,5 @@
+subgraphs:
+  internalServerError:
+    routing_url: https://redhat.com
+    schema:
+      file: ./emptysubgraph.graphql
