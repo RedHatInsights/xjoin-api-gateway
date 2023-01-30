@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -exv
 
 IMAGE="quay.io/cloudservices/xjoin-api-gateway"
