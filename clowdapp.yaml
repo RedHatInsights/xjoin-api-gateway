@@ -80,7 +80,7 @@ parameters:
     value: 'latest'
     required: true
   - name: IMAGE
-    value: quay.io/ckyrouac/xjoin-api-gateway
+    value: quay.io/cloudservices/xjoin-api-gateway
 
   - description : ClowdEnvironment name
     name: ENV_NAME
