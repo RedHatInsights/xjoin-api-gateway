@@ -1,36 +1,25 @@
-import {gql, ServerInfo} from "apollo-server";
+import { gql, ServerInfo } from "apollo-server";
 
-import {ApolloServer} from 'apollo-server';
-import {ApolloGateway, IntrospectAndCompose, ServiceDefinition} from "@apollo/gateway";
+import { ApolloServer } from 'apollo-server';
+import { ApolloGateway, IntrospectAndCompose, ServiceDefinition } from "@apollo/gateway";
 import config from 'config';
-import got, {Response} from "got";
-import {parse} from "graphql";
-import {composeServices} from '@apollo/composition';
-import {readFileSync} from "fs";
+import got, { Response } from "got";
+import { parse } from "graphql";
+import { composeServices } from '@apollo/composition';
+import { readFileSync } from "fs";
+import { Artifact, ArtifactsResponse } from "./interfaces";
+import { prefix } from "./registry";
 
 const defaultSuperGraph = readFileSync('./default-super-graph.graphql').toString();
 
-async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
-    interface Artifact {
-        id: string,
-        name: string,
-        description: string,
-        createdOn: string,
-        createdBy: string,
-        type: string,
-        labels: string[],
-        state: string,
-        modifiedOn: string,
-        groupId: string
-    }
+async function fetchArtifacts(): Promise<Response<ArtifactsResponse>> {
 
-    interface ArtifactsResponse {
-        artifacts: Artifact[]
-    }
+    // Function to fetch artifacts from Schema Registry
+    // In dev we use Apicurio
 
-    const prefix = `${config.get('SchemaRegistry.Protocol')}://${config.get('SchemaRegistry.Hostname')}:${config.get('SchemaRegistry.Port')}/apis/registry`;
+    // TODO: DEBUG log here
 
-    const res: Response<ArtifactsResponse> = await got('v2/search/artifacts?labels=graphql', {
+    return await got('v2/search/artifacts?labels=graphql', {
         prefixUrl: prefix,
         responseType: 'json',
         headers: {
@@ -38,79 +27,108 @@ async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
         }
     });
 
+}
+
+async function fetchArtifactsDetails(artifact: Artifact): Promise<Response<string>> {
+
+    // TODO: DEBUG log here
+    let artifactPath = '';
+    if (artifact.groupId !== undefined) {
+        // TODO: DEBUG log here
+        artifactPath = `v1/groups/${artifact.groupId}/artifacts/${artifact.id}`
+    } else {
+        // TODO: DEBUG log here
+        artifactPath = `v1/artifacts/${artifact.id}`
+    }
+
+    return await got(artifactPath, {
+        prefixUrl: prefix
+    });
+
+    // TODO: DEBUG log here
+}
+
+function extractSubgraphUrl(artifact: Artifact) {
+
+    // TODO: DEBUG log here
+    let url = ''
+
+    if (artifact.labels !== undefined) {
+        for (const label of artifact.labels) {
+            if (label.startsWith('xjoin-subgraph-url=')) {
+                // TODO: DEBUG log here
+                url = label.split('xjoin-subgraph-url=')[1]
+            }
+        }
+    }
+
+    // TODO: DEBUG log here
+    return url
+}
+
+async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
+    // TODO: INFO log here
+    const artifactsRespose: Response<ArtifactsResponse> = await fetchArtifacts();
+
     const serviceDefinitions: ServiceDefinition[] = [];
-    const artifacts: Artifact[] = res.body.artifacts;
+    const artifacts: Artifact[] = artifactsRespose.body.artifacts;
 
     if (artifacts.length == 0) {
+        // TODO: INFO log here
         return [];
     }
 
     for (const artifact of artifacts) {
-        let artifactPath = '';
-        if (artifact.groupId !== undefined) {
-            artifactPath = `v1/groups/${artifact.groupId}/artifacts/${artifact.id}`
-        } else {
-            artifactPath = `v1/artifacts/${artifact.id}`
-        }
+        // TODO: INFO log here
+        const gqlResponse: Response<string> = await fetchArtifactsDetails(artifact);
 
-        const gqlRes: Response<string> = await got(artifactPath, {
-            prefixUrl: prefix
-        });
-
-        let url = '';
-
-        if (artifact.labels !== undefined) {
-            for (const label of artifact.labels) {
-                if (label.startsWith('xjoin-subgraph-url=')) {
-                    url = label.split('xjoin-subgraph-url=')[1]
-                }
-            }
-        }
+        let url = extractSubgraphUrl(artifact);
 
         serviceDefinitions.push({
             name: artifact.id,
             url: url,
-            typeDefs: parse(gqlRes.body)
+            typeDefs: parse(gqlResponse.body)
         });
     }
 
     return serviceDefinitions;
 }
 
+const gateway = new ApolloGateway({
+    async supergraphSdl({ update, healthCheck }) {
+        const poll = function () {
+
+            setTimeout(async () => {
+                try {
+                    const compositionResult = await composeServices(await loadSubgraphSchemas())
+                    if (!compositionResult.errors) {
+                        // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
+                        update(compositionResult.supergraphSdl)
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+
+                poll();
+            }, 2000); // TODO: May this timeout be higher?
+        }
+        await poll();
+        const compositionResult = await composeServices(await loadSubgraphSchemas())
+        if (!compositionResult.errors) {
+            return {
+                supergraphSdl: compositionResult.supergraphSdl
+            }
+        } else {
+            return {
+                supergraphSdl: defaultSuperGraph
+            }
+        }
+    },
+});
+
 const server = new ApolloServer({
     introspection: true,
-    gateway: new ApolloGateway({
-        async supergraphSdl({update, healthCheck}) {
-            const poll = function () {
-                setTimeout(async () => {
-                    try {
-                        const compositionResult = await composeServices(await loadSubgraphSchemas())
-                        if (!compositionResult.errors) {
-                            // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
-                            update(compositionResult.supergraphSdl)
-                        }
-                    } catch (e) {
-                        console.error(e);
-                    }
-
-                    poll();
-                }, 2000);
-            }
-
-            await poll();
-
-            const compositionResult = await composeServices(await loadSubgraphSchemas())
-            if (!compositionResult.errors) {
-                return {
-                    supergraphSdl: compositionResult.supergraphSdl
-                }
-            } else {
-                return {
-                    supergraphSdl: defaultSuperGraph
-                }
-            }
-        },
-    }),
+    gateway: gateway
 });
 
 server.listen({
