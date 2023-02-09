@@ -1,6 +1,4 @@
-import { gql, ServerInfo } from "apollo-server";
-
-import { ApolloServer } from 'apollo-server';
+import { ApolloServer } from 'apollo-server-express';
 import { ApolloGateway, IntrospectAndCompose, ServiceDefinition } from "@apollo/gateway";
 import config from 'config';
 import got, { Response } from "got";
@@ -8,7 +6,9 @@ import { parse } from "graphql";
 import { composeServices } from '@apollo/composition';
 import { readFileSync } from "fs";
 import { Artifact, ArtifactsResponse } from "./interfaces";
-import { prefix } from "./registry";
+import { PREFIX } from "./registry";
+import express from 'express';
+import { Logger } from './logger/logger';
 
 const defaultSuperGraph = readFileSync('./default-super-graph.graphql').toString();
 
@@ -20,7 +20,7 @@ async function fetchArtifacts(): Promise<Response<ArtifactsResponse>> {
     // TODO: DEBUG log here
 
     return await got('v2/search/artifacts?labels=graphql', {
-        prefixUrl: prefix,
+        prefixUrl: PREFIX,
         responseType: 'json',
         headers: {
             Accept: 'application/json'
@@ -42,7 +42,7 @@ async function fetchArtifactsDetails(artifact: Artifact): Promise<Response<strin
     }
 
     return await got(artifactPath, {
-        prefixUrl: prefix
+        prefixUrl: PREFIX
     });
 
     // TODO: DEBUG log here
@@ -126,13 +126,22 @@ const gateway = new ApolloGateway({
     },
 });
 
-const server = new ApolloServer({
-    introspection: true,
-    gateway: gateway
-});
+async function start() {
 
-server.listen({
-    port: config.get("Port")
-}).then((url: ServerInfo) => {
-    console.log(`🚀 Server ready at ${url.url}/graphql`);
-})
+    const app = express();
+
+    const server = new ApolloServer({
+        introspection: true,
+        gateway: gateway
+    });
+
+    await server.start()
+
+    server.applyMiddleware({ app })
+
+    app.listen({ port: config.get("Port") }, () => {
+        Logger.info(`Server ready at http://localhost:${config.get("Port")}/graphql`)
+    })
+}
+
+start()
