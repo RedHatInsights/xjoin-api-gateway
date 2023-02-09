@@ -4,5 +4,6 @@
         "Hostname": "localhost",
         "Port": "1080"
     },
-    "Port": "4000"
+    "Port": "4000",
+    "LOG_LEVEL": "info"
 }
