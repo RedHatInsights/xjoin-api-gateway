@@ -18,8 +18,8 @@ RUN microdnf module enable nodejs:16 && \
 
 ADD . $HOME
 
-RUN npm i -g typescript@4.3.5 && npm run compile
 RUN npm i -g
+RUN npm i -g typescript@4.3.5 && npm run compile
 RUN npm ci && tsc
 
 USER 1001
