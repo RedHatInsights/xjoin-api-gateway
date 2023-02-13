@@ -97,7 +97,7 @@ async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
 const gateway = new ApolloGateway({
     async supergraphSdl({ update, healthCheck }) {
         const poll = function () {
-
+            Logger.info(`Fetching Subgraph Schemas every ${config.get("GRAPHS_SYNC_INTERVAL")}ms`)
             setTimeout(async () => {
                 try {
                     const compositionResult = await composeServices(await loadSubgraphSchemas())
@@ -110,7 +110,7 @@ const gateway = new ApolloGateway({
                 }
 
                 poll();
-            }, 2000); // TODO: May this timeout be higher?
+            }, config.get("GRAPHS_SYNC_INTERVAL"));
         }
         await poll();
         const compositionResult = await composeServices(await loadSubgraphSchemas())
