@@ -9,7 +9,6 @@ import { Artifact, ArtifactsResponse } from "./interfaces";
 import { PREFIX } from "./registry";
 import express from 'express';
 import { Logger, logRequestMiddleware } from './logger/logger';
-import { morganMiddleware } from './logger/morgan';
 import bodyParser from 'body-parser';
 
 const defaultSuperGraph = readFileSync('./default-super-graph.graphql').toString();
@@ -140,7 +139,6 @@ async function start() {
     Logger.info("Starting Apollo Server")
     await server.start()
 
-    app.use(morganMiddleware)
     app.use(bodyParser.json())
     app.use(logRequestMiddleware)
     server.applyMiddleware({ app })
