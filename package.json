@@ -22,7 +22,6 @@
   "dependencies": {
     "@apollo/gateway": "^2.0.0-alpha.6",
     "@types/config": "^0.0.40",
-    "apollo-server": "^3.5.0",
     "apollo-server-express": "^3.11.1",
     "config": "^3.3.6",
     "got": "^11.8.3",
