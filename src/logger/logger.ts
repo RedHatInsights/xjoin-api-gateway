@@ -19,7 +19,13 @@ interface Request extends IncomingMessage {
 
 const { combine, timestamp, printf } = format;
 
-const logFormat = printf(({ level, message, timestamp }) => {
+/* 
+Possible bug here, returning: Property 'timestamp' does not exist on type 'TransformableInfo'
+when running tsc
+Need to add timestamp to the interface here: https://github.com/winstonjs/logform/blob/master/index.d.ts#L8
+*/
+// @ts-ignore
+const logFormat = printf(({ timestamp, level, message }) => {
     return `${timestamp} ${level}: ${message}`;
 })
 
