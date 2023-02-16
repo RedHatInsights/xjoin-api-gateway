@@ -6,10 +6,10 @@ import { parse } from "graphql";
 import { composeServices } from '@apollo/composition';
 import { readFileSync } from "fs";
 import { Artifact, ArtifactsResponse } from "./interfaces";
-import { PREFIX } from "./registry";
+import { PREFIX, REQUEST_TIMEOUT } from "./registry";
 import express from 'express';
 import { Logger, logRequestMiddleware } from './logger/logger';
-import bodyParser from 'body-parser';
+
 
 const defaultSuperGraph = readFileSync('./default-super-graph.graphql').toString();
 
@@ -17,15 +17,18 @@ async function fetchArtifacts(): Promise<Response<ArtifactsResponse>> {
 
     // Function to fetch artifacts from Schema Registry
     // In dev we use Apicurio
-    const artifactsPath = 'v2/search/artifacts?labels=graphql'
-    Logger.debug(`Fetching artifacts at: ${PREFIX}/${artifactsPath}`)
-    return await got(artifactsPath, {
-        prefixUrl: PREFIX,
-        responseType: 'json',
-        headers: {
-            Accept: 'application/json'
-        }
-    });
+    const artifactsPath = 'v2/search/artifacts?labels=graphql' // Make it constant
+
+    try {
+        Logger.debug(`Fetching artifacts at: ${PREFIX}/${artifactsPath}`);
+        const artifacts : Response<ArtifactsResponse> = await got.get(artifactsPath, {
+            prefixUrl: PREFIX,
+            responseType: 'json',
+            headers: {
+                Accept: 'application/json'
+            },
+            timeout: REQUEST_TIMEOUT
+        });
 
 }
 
@@ -40,10 +43,13 @@ async function fetchArtifactsDetails(artifact: Artifact): Promise<Response<strin
         Logger.debug(`Using resource path: ${artifactPath}`)
     }
 
-    Logger.debug(`Fetching artifact details at: ${PREFIX}/${artifactPath}`)
-    return await got(artifactPath, {
-        prefixUrl: PREFIX
-    });
+    try {
+
+        Logger.debug(`Fetching artifact details at: ${PREFIX}/${artifactPath}`)
+        const artifact: Response<string> = await got.get(artifactPath, {
+            prefixUrl: PREFIX,
+            timeout: REQUEST_TIMEOUT,
+        });
 }
 
 function extractSubgraphUrl(artifact: Artifact) {
