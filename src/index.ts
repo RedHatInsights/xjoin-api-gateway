@@ -29,6 +29,12 @@ async function fetchArtifacts(): Promise<Response<ArtifactsResponse>> {
             },
             timeout: REQUEST_TIMEOUT
         });
+        Logger.debug(`Successfully fetched artifacts from: ${PREFIX}/${artifactsPath}`)
+        return artifacts
+    } catch(err : any){
+        Logger.error(`Failed to fetch artifacts from: ${PREFIX}/${artifactsPath}`)
+        throw(err)
+    }
 
 }
 
@@ -50,6 +56,12 @@ async function fetchArtifactsDetails(artifact: Artifact): Promise<Response<strin
             prefixUrl: PREFIX,
             timeout: REQUEST_TIMEOUT,
         });
+        Logger.debug(`Successfully fetched artifact details from: ${PREFIX}/${artifactPath}`)
+        return artifact
+    } catch (err: any) {
+        Logger.error(`Failed to fetch artifact details from: ${PREFIX}/${artifactPath}`)
+        throw (err)
+    }
 }
 
 function extractSubgraphUrl(artifact: Artifact) {
@@ -71,32 +83,45 @@ function extractSubgraphUrl(artifact: Artifact) {
 
 async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
 
-    Logger.info("Fetching artifacts from Schema Registry")
-    const artifactsRespose: Response<ArtifactsResponse> = await fetchArtifacts();
-
+    let artifacts: Artifact[];
     const serviceDefinitions: ServiceDefinition[] = [];
-    const artifacts: Artifact[] = artifactsRespose.body.artifacts;
+
+    try {
+        Logger.info("Fetching artifacts from Schema Registry")
+        const artifactsRespose: Response<ArtifactsResponse> = await fetchArtifacts();
+        artifacts = artifactsRespose.body.artifacts;
+    } catch (err: any) {
+        Logger.error(`Failed to fetch artifacts with error: ${err.message}`)
+        return err;
+    }
 
     if (artifacts.length == 0) {
-        Logger.warn("No artifacts found at the Schame Registry")
+        Logger.warn("No artifacts found at the Schema Registry")
         return [];
     }
 
     Logger.info(`Found ${artifacts.length} artifacts`)
     for (const artifact of artifacts) {
-        Logger.info(`Fetching details of artifact: ${artifact.id}`)
-        const gqlResponse: Response<string> = await fetchArtifactsDetails(artifact);
+        try {
+            Logger.info(`Fetching details of artifact: ${artifact.id}`)
+            const gqlResponse: Response<string> = await fetchArtifactsDetails(artifact);
 
-        let url = extractSubgraphUrl(artifact);
+            let url = extractSubgraphUrl(artifact);
 
-        serviceDefinitions.push({
-            name: artifact.id,
-            url: url,
-            typeDefs: parse(gqlResponse.body)
-        });
+            serviceDefinitions.push({
+                name: artifact.id,
+                url: url,
+                typeDefs: parse(gqlResponse.body)
+            });
+        } catch (err: any) {
+            Logger.error(`Failed to fetch artifact details with error: ${err.message}`)
+            throw (err)
+        }
     }
 
     return serviceDefinitions;
+
+
 }
 
 const gateway = new ApolloGateway({
@@ -112,8 +137,8 @@ const gateway = new ApolloGateway({
                         // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
                         update(compositionResult.supergraphSdl)
                     }
-                } catch (e) {
-                    console.error(e);
+                } catch (e : any) {
+                    Logger.error(e.message);
                 }
 
                 poll();
@@ -145,7 +170,7 @@ async function start() {
     Logger.info("Starting Apollo Server")
     await server.start()
 
-    app.use(bodyParser.json())
+    app.use(express.json())
     app.use(logRequestMiddleware)
     server.applyMiddleware({ app })
 
