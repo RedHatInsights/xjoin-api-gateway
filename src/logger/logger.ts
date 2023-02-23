@@ -1,7 +1,7 @@
-import { createLogger, format, transports } from 'winston'
-import config from 'config'
-import { Response, NextFunction } from 'express'
-import { IncomingMessage } from 'http'
+import { createLogger, format, transports } from "winston";
+import config from "config";
+import { Response, NextFunction } from "express";
+import { IncomingMessage } from "http";
 
 const levels = {
     error: 0,
@@ -9,11 +9,11 @@ const levels = {
     info: 2,
     http: 3,
     debug: 4,
-}
+};
 
 interface Request extends IncomingMessage {
     body: {
-        query: String;
+        query: string;
     };
 }
 
@@ -27,20 +27,20 @@ Need to add timestamp to the interface here: https://github.com/winstonjs/logfor
 // @ts-ignore
 const logFormat = printf(({ timestamp, level, message }) => {
     return `${timestamp} ${level}: ${message}`;
-})
+});
 
 export const logRequestMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    if (req.method == 'OPTIONS') {
-        next()
-    } else if (req.body !== undefined && req.body.query !== undefined && req.body.query.indexOf('IntrospectionQuery') !== -1) {
-        next()
+    if (req.method == "OPTIONS") {
+        next();
+    } else if (req.body !== undefined && req.body.query !== undefined && req.body.query.indexOf("IntrospectionQuery") !== -1) {
+        next();
     } else if (req !== undefined && req.body !== undefined) {
-        Logger.http(`Supergraph query: ${req.body.query}`)
-        next()
+        Logger.http(`Supergraph query: ${req.body.query}`);
+        next();
     } else {
-        next()
+        next();
     }
-}
+};
 
 export const Logger = createLogger({
     level: config.get("LOG_LEVEL"),
@@ -51,4 +51,4 @@ export const Logger = createLogger({
         format.json()
     ),
     transports: [new transports.Console()]
-})
+});
