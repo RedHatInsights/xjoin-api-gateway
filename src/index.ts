@@ -6,9 +6,10 @@ import { parse } from "graphql";
 import { composeServices } from '@apollo/composition';
 import { readFileSync } from "fs";
 import { Artifact, ArtifactsResponse } from "./interfaces";
-import { PREFIX } from "./registry";
+import { PREFIX, REQUEST_TIMEOUT } from "./registry";
 import express from 'express';
-import { Logger } from './logger/logger';
+import { Logger, logRequestMiddleware } from './logger/logger';
+
 
 const defaultSuperGraph = readFileSync('./default-super-graph.graphql').toString();
 
@@ -16,101 +17,132 @@ async function fetchArtifacts(): Promise<Response<ArtifactsResponse>> {
 
     // Function to fetch artifacts from Schema Registry
     // In dev we use Apicurio
+    const artifactsPath = 'v2/search/artifacts?labels=graphql' // Make it constant
 
-    // TODO: DEBUG log here
-
-    return await got('v2/search/artifacts?labels=graphql', {
-        prefixUrl: PREFIX,
-        responseType: 'json',
-        headers: {
-            Accept: 'application/json'
-        }
-    });
+    try {
+        Logger.debug(`Fetching artifacts at: ${PREFIX}/${artifactsPath}`);
+        const artifacts : Response<ArtifactsResponse> = await got.get(artifactsPath, {
+            prefixUrl: PREFIX,
+            responseType: 'json',
+            headers: {
+                Accept: 'application/json'
+            },
+            timeout: REQUEST_TIMEOUT
+        });
+        Logger.debug(`Successfully fetched artifacts from: ${PREFIX}/${artifactsPath}`)
+        return artifacts
+    } catch(err : any){
+        Logger.error(`Failed to fetch artifacts from: ${PREFIX}/${artifactsPath}`)
+        throw(err)
+    }
 
 }
 
 async function fetchArtifactsDetails(artifact: Artifact): Promise<Response<string>> {
 
-    // TODO: DEBUG log here
     let artifactPath = '';
     if (artifact.groupId !== undefined) {
-        // TODO: DEBUG log here
         artifactPath = `v1/groups/${artifact.groupId}/artifacts/${artifact.id}`
+        Logger.debug(`Artifact has group, using resource path: ${artifactPath}`)
     } else {
-        // TODO: DEBUG log here
         artifactPath = `v1/artifacts/${artifact.id}`
+        Logger.debug(`Using resource path: ${artifactPath}`)
     }
 
-    return await got(artifactPath, {
-        prefixUrl: PREFIX
-    });
+    try {
 
-    // TODO: DEBUG log here
+        Logger.debug(`Fetching artifact details at: ${PREFIX}/${artifactPath}`)
+        const artifact: Response<string> = await got.get(artifactPath, {
+            prefixUrl: PREFIX,
+            timeout: REQUEST_TIMEOUT,
+        });
+        Logger.debug(`Successfully fetched artifact details from: ${PREFIX}/${artifactPath}`)
+        return artifact
+    } catch (err: any) {
+        Logger.error(`Failed to fetch artifact details from: ${PREFIX}/${artifactPath}`)
+        throw (err)
+    }
 }
 
 function extractSubgraphUrl(artifact: Artifact) {
 
-    // TODO: DEBUG log here
+    Logger.debug(`Extracting Subgraph URL from artifact: ${artifact.id}`)
     let url = ''
 
     if (artifact.labels !== undefined) {
         for (const label of artifact.labels) {
             if (label.startsWith('xjoin-subgraph-url=')) {
-                // TODO: DEBUG log here
                 url = label.split('xjoin-subgraph-url=')[1]
             }
         }
     }
 
-    // TODO: DEBUG log here
+    Logger.debug(`Extracted URL from artifact: ${url}`)
     return url
 }
 
 async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
-    // TODO: INFO log here
-    const artifactsRespose: Response<ArtifactsResponse> = await fetchArtifacts();
 
+    let artifacts: Artifact[];
     const serviceDefinitions: ServiceDefinition[] = [];
-    const artifacts: Artifact[] = artifactsRespose.body.artifacts;
+
+    try {
+        Logger.info("Fetching artifacts from Schema Registry")
+        const artifactsRespose: Response<ArtifactsResponse> = await fetchArtifacts();
+        artifacts = artifactsRespose.body.artifacts;
+    } catch (err: any) {
+        Logger.error(`Failed to fetch artifacts with error: ${err.message}`)
+        return err;
+    }
 
     if (artifacts.length == 0) {
-        // TODO: INFO log here
+        Logger.warn("No artifacts found at the Schema Registry")
         return [];
     }
 
+    Logger.info(`Found ${artifacts.length} artifacts`)
     for (const artifact of artifacts) {
-        // TODO: INFO log here
-        const gqlResponse: Response<string> = await fetchArtifactsDetails(artifact);
+        try {
+            Logger.info(`Fetching details of artifact: ${artifact.id}`)
+            const gqlResponse: Response<string> = await fetchArtifactsDetails(artifact);
 
-        let url = extractSubgraphUrl(artifact);
+            let url = extractSubgraphUrl(artifact);
 
-        serviceDefinitions.push({
-            name: artifact.id,
-            url: url,
-            typeDefs: parse(gqlResponse.body)
-        });
+            serviceDefinitions.push({
+                name: artifact.id,
+                url: url,
+                typeDefs: parse(gqlResponse.body)
+            });
+        } catch (err: any) {
+            Logger.error(`Failed to fetch artifact details with error: ${err.message}`)
+            throw (err)
+        }
     }
 
     return serviceDefinitions;
+
+
 }
 
 const gateway = new ApolloGateway({
+
     async supergraphSdl({ update, healthCheck }) {
         const poll = function () {
-
+            Logger.info(`Fetching Subgraph Schemas every ${config.get("GRAPHS_SYNC_INTERVAL")}ms`)
             setTimeout(async () => {
                 try {
+
                     const compositionResult = await composeServices(await loadSubgraphSchemas())
                     if (!compositionResult.errors) {
                         // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
                         update(compositionResult.supergraphSdl)
                     }
-                } catch (e) {
-                    console.error(e);
+                } catch (e : any) {
+                    Logger.error(e.message);
                 }
 
                 poll();
-            }, 2000); // TODO: May this timeout be higher?
+            }, config.get("GRAPHS_SYNC_INTERVAL"));
         }
         await poll();
         const compositionResult = await composeServices(await loadSubgraphSchemas())
@@ -135,12 +167,15 @@ async function start() {
         gateway: gateway
     });
 
+    Logger.info("Starting Apollo Server")
     await server.start()
 
+    app.use(express.json())
+    app.use(logRequestMiddleware)
     server.applyMiddleware({ app })
 
     app.listen({ port: config.get("Port") }, () => {
-        Logger.info(`Server ready at http://localhost:${config.get("Port")}/graphql`)
+        Logger.info(`Server ready at http://localhost:${config.get("Port")}${server.graphqlPath}`)
     })
 }
 
