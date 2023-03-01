@@ -12,11 +12,11 @@ subgraphs defined in an Apicurio schema registry.
 
 | Name                     | Description                                                | Default Value |
 |--------------------------|------------------------------------------------------------|---------------|
+| LOG_LEVEL                | Logging verbosity (error, warn, info, http, debug)         | info          |
 | SCHEMA_REGISTRY_PROTOCOL | Protocol of the schema registry to connect to (http/https) | http          |
-| SCHEMA_REGISTRY_HOSTNAME | Hostname of the schema registry to connect to              | localhost     |
-| SCHEMA_REGISTRY_PORT     | Port of the schema registry to connect to                  | 1080          |
-| PORT                     | Port to use for the xjoin-api-gateway service              | 4000          |
-| NODE_CONFIG_DIR          | Directory of config variables                              | dist/config   |
+| GRAPH_SYNC_INTERVAL      | Interval between graph synchronization                     | 60000         |
+| REQUEST_TIMEOUT          | Timeout tolerance when talking to the service registry     | 3000          |
+| ACG_CONFIG               | Path to the clowder configmap JSON file (impliciy)         |               |
 
 ### Running the server
 Set each environment variable to the value specific to your environment before running the server.

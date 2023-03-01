@@ -1,7 +1,7 @@
 import { createLogger, format, transports } from "winston";
-import config from "config";
 import { Response, NextFunction } from "express";
 import { IncomingMessage } from "http";
+import config from '../config';
 
 const levels = {
     error: 0,
@@ -19,7 +19,7 @@ interface Request extends IncomingMessage {
 
 const { combine, timestamp, printf } = format;
 
-/* 
+/*
 Possible bug here, returning: Property 'timestamp' does not exist on type 'TransformableInfo'
 when running tsc
 Need to add timestamp to the interface here: https://github.com/winstonjs/logform/blob/master/index.d.ts#L8
@@ -43,7 +43,7 @@ export const logRequestMiddleware = (req: Request, res: Response, next: NextFunc
 };
 
 export const Logger = createLogger({
-    level: config.get("LOG_LEVEL"),
+    level: config.log_level,
     levels,
     format: combine(
         timestamp(),
