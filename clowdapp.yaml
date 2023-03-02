@@ -9,11 +9,19 @@ objects:
       name: xjoin-api-gateway
     spec:
       envName: ${ENV_NAME}
-
+      dependencies:
+        - xjoin-apicurio
       deployments:
         - name: api
           minReplicas: ${{NUM_REPLICAS}}
-          web: true
+          webServices:
+            private:
+              enabled: true
+          ports:
+            - name: private
+              protocol: TCP
+              targetPort: 10000
+              port: ${{PORT}}
           podSpec:
             image: ${IMAGE}:${IMAGE_TAG}
             livenessProbe:
@@ -39,13 +47,12 @@ objects:
             env:
               - name: SCHEMA_REGISTRY_PROTOCOL
                 value: ${SCHEMA_REGISTRY_PROTOCOL}
-              - name: SCHEMA_REGISTRY_HOSTNAME
-                value: ${SCHEMA_REGISTRY_HOSTNAME}
-              - name: SCHEMA_REGISTRY_PORT
-                value: ${SCHEMA_REGISTRY_PORT}
-              - name: PORT
-                value: ${PORT}
-
+              - name: GRAPH_SYNC_INTERVAL
+                value: "${GRAPH_SYNC_INTERVAL}"
+              - name: LOG_LEVEL
+                value: ${LOG_LEVEL}
+              - name: REQUEST_TIMEOUT
+                value: "${REQUEST_TIMEOUT}"
             resources:
               limits:
                 cpu: ${CPU_LIMITS}
@@ -55,15 +62,16 @@ objects:
                 memory: ${MEMORY_REQUESTS}
 
 parameters:
-  - name: PORT
-    value: '8000'
   - name: SCHEMA_REGISTRY_PROTOCOL
     value: 'http'
-  - name: SCHEMA_REGISTRY_HOSTNAME
-    value: 'example-apicurioregistry-kafkasql-service.test.svc'
-    required: true
-  - name: SCHEMA_REGISTRY_PORT
-    value: '8080'
+  - name: GRAPH_SYNC_INTERVAL
+    value: '60000'
+  - name: LOG_LEVEL
+    value: 'info'
+  - name: REQUEST_TIMEOUT
+    value: '3000'
+  - name: PORT
+    value: '10000'
     required: true
   - name: CPU_REQUESTS
     value: 100m

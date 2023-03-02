@@ -1,12 +1,11 @@
 import { ApolloServer } from "apollo-server-express";
 import { ApolloGateway, IntrospectAndCompose, ServiceDefinition } from "@apollo/gateway";
-import config from "config";
+import config from "./config";
 import got, { Response } from "got";
 import { parse } from "graphql";
 import { composeServices } from "@apollo/composition";
 import { readFileSync } from "fs";
 import { Artifact, ArtifactsResponse } from "./interfaces";
-import { PREFIX, REQUEST_TIMEOUT } from "./registry";
 import express from "express";
 import { Logger, logRequestMiddleware } from "./logger/logger";
 
@@ -20,19 +19,21 @@ async function fetchArtifacts(): Promise<Response<ArtifactsResponse>> {
     const artifactsPath = "v2/search/artifacts?labels=graphql"; // Make it constant
 
     try {
-        Logger.debug(`Fetching artifacts at: ${PREFIX}/${artifactsPath}`);
+        Logger.debug(`Fetching artifacts at: ${config.registry}/${artifactsPath}`);
         const artifacts: Response<ArtifactsResponse> = await got.get(artifactsPath, {
-            prefixUrl: PREFIX,
+            prefixUrl: config.registry,
             responseType: "json",
             headers: {
                 Accept: "application/json"
             },
-            timeout: REQUEST_TIMEOUT
+            timeout: {
+                request: config.timeout
+            }
         });
-        Logger.debug(`Successfully fetched artifacts from: ${PREFIX}/${artifactsPath}`);
+        Logger.debug(`Successfully fetched artifacts from: ${config.registry}/${artifactsPath}`);
         return artifacts;
     } catch (err: any) {
-        Logger.error(`Failed to fetch artifacts from: ${PREFIX}/${artifactsPath}`);
+        Logger.error(`Failed to fetch artifacts from: ${config.registry}/${artifactsPath}`);
         throw (err);
     }
 
@@ -51,15 +52,17 @@ async function fetchArtifactsDetails(artifact: Artifact): Promise<Response<strin
 
     try {
 
-        Logger.debug(`Fetching artifact details at: ${PREFIX}/${artifactPath}`);
+        Logger.debug(`Fetching artifact details at: ${config.registry}/${artifactPath}`);
         const artifact: Response<string> = await got.get(artifactPath, {
-            prefixUrl: PREFIX,
-            timeout: REQUEST_TIMEOUT,
+            prefixUrl: config.registry,
+            timeout: {
+                request: config.timeout
+            },
         });
-        Logger.debug(`Successfully fetched artifact details from: ${PREFIX}/${artifactPath}`);
+        Logger.debug(`Successfully fetched artifact details from: ${config.registry}/${artifactPath}`);
         return artifact;
     } catch (err: any) {
-        Logger.error(`Failed to fetch artifact details from: ${PREFIX}/${artifactPath}`);
+        Logger.error(`Failed to fetch artifact details from: ${config.registry}/${artifactPath}`);
         throw (err);
     }
 }
@@ -127,8 +130,10 @@ async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
 const gateway = new ApolloGateway({
 
     async supergraphSdl({ update, healthCheck }) {
+        const interval = Number(config.interval);
+
         const poll = function () {
-            Logger.info(`Fetching Subgraph Schemas every ${config.get("GRAPHS_SYNC_INTERVAL")}ms`)
+            Logger.info(`Fetching Subgraph Schemas every ${interval}ms`)
             setTimeout(async () => {
                 try {
 
@@ -142,7 +147,7 @@ const gateway = new ApolloGateway({
                 }
 
                 poll();
-            }, config.get("GRAPHS_SYNC_INTERVAL"));
+            }, interval);
         };
         await poll();
         const compositionResult = await composeServices(await loadSubgraphSchemas());
@@ -165,8 +170,8 @@ async function start() {
     app.use(express.json());
     app.use(logRequestMiddleware);
 
-    app.listen({ port: config.get("Port") }, () => {
-        Logger.info(`Server ready at http://localhost:${config.get("Port")}${server.graphqlPath}`);
+    app.listen({ port: config.port }, () => {
+        Logger.info(`Server ready at http://localhost:${config.port}${server.graphqlPath}`);
     });
 
     const server = new ApolloServer({
