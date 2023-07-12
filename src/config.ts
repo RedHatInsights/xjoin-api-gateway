@@ -8,6 +8,7 @@ const config = {
   log_level: process.env.LOG_LEVEL || 'info',
   registry: `${process.env.SCHEMA_REGISTRY_PROTOCOL || 'http'}://${apicurio.hostname}:${apicurio.port}/apis/registry`,
   timeout: Number(process.env.REQUEST_TIMEOUT) || 3000,
+  env: process.env.ENV || 'development'
 };
 
 export default config;

@@ -1,13 +1,14 @@
+import "reflect-metadata";
 import { ApolloServer } from "apollo-server-express";
 import { ApolloGateway, IntrospectAndCompose, ServiceDefinition } from "@apollo/gateway";
-import config from "./config";
+import config from "./config.js";
 import got, { Response } from "got";
 import { parse } from "graphql";
 import { composeServices } from "@apollo/composition";
 import { readFileSync } from "fs";
-import { Artifact, ArtifactsResponse } from "./interfaces";
+import { Artifact, ArtifactsResponse } from "./interfaces.js";
 import express from "express";
-import { Logger, logRequestMiddleware } from "./logger/logger";
+import { Logger, logRequestMiddleware } from "./logger/logger.js";
 
 
 const defaultSuperGraph = readFileSync("./default-super-graph.graphql").toString();
