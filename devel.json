@@ -13,12 +13,12 @@
   "privateEndpoints": [
     {
       "app": "xjoin-apicurio",
-      "hostname": "apicurio.test.svc",
+      "hostname": "xjoin-apicurio-service",
       "name": "service",
-      "port": 1080
+      "port": 10000
     }
   ],
-  "privatePort": 10000,
+  "privatePort": 10002,
   "publicPort": 8000,
   "webPort": 8000
 }

@@ -1,7 +1,7 @@
 import { createLogger, format, transports } from "winston";
 import { Response, NextFunction } from "express";
 import { IncomingMessage } from "http";
-import config from '../config';
+import config from '../config.js';
 
 const levels = {
     error: 0,

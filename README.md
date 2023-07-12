@@ -5,7 +5,7 @@ subgraphs defined in an Apicurio schema registry.
 
 ### Dependencies
 
-- Node.js v16
+- Node.js v18
 - A running instance of an [Apicurio schema registry](https://www.apicur.io/registry/)
 
 ### Environment Variables
