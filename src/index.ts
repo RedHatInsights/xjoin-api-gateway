@@ -96,7 +96,7 @@ async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
         artifacts = artifactsRespose.body.artifacts;
     } catch (err: any) {
         Logger.error(`Failed to fetch artifacts with error: ${err.message}`);
-        return err;
+        throw (err);
     }
 
     if (artifacts.length == 0) {
@@ -131,17 +131,19 @@ async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
 const gateway = new ApolloGateway({
 
     async supergraphSdl({ update, healthCheck }) {
-        const interval = Number(config.interval);
 
+        //poll for updates to the supergraph
+        const interval = Number(config.interval);
         const poll = function () {
             Logger.info(`Fetching Subgraph Schemas every ${interval}ms`)
             setTimeout(async () => {
                 try {
-
                     const compositionResult = await composeServices(await loadSubgraphSchemas());
                     if (!compositionResult.errors) {
                         // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
                         update(compositionResult.supergraphSdl);
+                    } else {
+                        Logger.error("Error composing supergraph: " + compositionResult)
                     }
                 } catch (e: any) {
                     Logger.error(e.message);
@@ -151,12 +153,22 @@ const gateway = new ApolloGateway({
             }, interval);
         };
         await poll();
-        const compositionResult = await composeServices(await loadSubgraphSchemas());
-        if (!compositionResult.errors) {
-            return {
-                supergraphSdl: compositionResult.supergraphSdl
-            };
-        } else {
+
+        //return the initial supergraphSdl upon startup
+        try {
+            const compositionResult = await composeServices(await loadSubgraphSchemas());
+            if (!compositionResult.errors) {
+                return {
+                    supergraphSdl: compositionResult.supergraphSdl
+                };
+            } else {
+                Logger.error("Error composing supergraph: " + compositionResult)
+                return {
+                    supergraphSdl: defaultSuperGraph
+                };
+            }
+        } catch (e: any) {
+            Logger.error("Error composing supergraph: " + e.message)
             return {
                 supergraphSdl: defaultSuperGraph
             };
