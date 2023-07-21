@@ -147,7 +147,7 @@ const gateway = new ApolloGateway({
                         // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
                         update(compositionResult.supergraphSdl);
                     } else {
-                        Logger.error("Error composing supergraph: " + compositionResult)
+                        Logger.error("Error composing supergraph: " + compositionResult.errors.toString())
                     }
                 } catch (e: any) {
                     Logger.error(e.message);
@@ -166,15 +166,17 @@ const gateway = new ApolloGateway({
                     supergraphSdl: compositionResult.supergraphSdl
                 };
             } else {
-                Logger.error("Error composing supergraph: " + compositionResult)
+                Logger.error("Error composing supergraph: " + compositionResult.errors.toString())
                 return {
-                    supergraphSdl: defaultSuperGraph
+                    supergraphSdl: defaultSuperGraph,
+                    graphRef: "xjoin@prod"
                 };
             }
         } catch (e: any) {
             Logger.error("Error composing supergraph: " + e.message)
             return {
-                supergraphSdl: defaultSuperGraph
+                supergraphSdl: defaultSuperGraph,
+                graphRef: "xjoin@prod"
             };
         }
     },
@@ -184,19 +186,28 @@ async function start() {
     const app = express();
     const httpServer = http.createServer(app);
 
-    const plugins = [ApolloServerPluginLandingPageLocalDefault({ embed: true })]
+    let plugins = [];
+    if (process.env.NODE_ENV === 'production') {
+      plugins = [ApolloServerPluginLandingPageProductionDefault({ embed: true, graphRef: 'xjoin@prod' })]
+    } else {
+      plugins = [ApolloServerPluginLandingPageLocalDefault({ embed: true })]
+    }
 
     const server = new ApolloServer({
         introspection: true,
         gateway: gateway,
-        plugins: plugins
+        plugins: plugins,
+        nodeEnv: 'development'
     });
 
     await server.start().then(() => {
         Logger.info("Starting Apollo Server");
+    }).catch((e) => {
+        Logger.error("Problem starting Apollo Server: " + e.toString())
     });
 
-    app.use('/graphql', express.json(), expressMiddleware(server));
+    app.use(express.json());
+    app.use(expressMiddleware(server))
     app.use(logRequestMiddleware);
 
     await new Promise<void>((resolve) => httpServer.listen({ port: config.port }, resolve));
