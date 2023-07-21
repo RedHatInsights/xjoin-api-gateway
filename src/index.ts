@@ -1,5 +1,4 @@
 import "reflect-metadata";
-import { ApolloServer } from "apollo-server-express";
 import { ApolloGateway, IntrospectAndCompose, ServiceDefinition } from "@apollo/gateway";
 import config from "./config.js";
 import got, { Response } from "got";
@@ -9,7 +8,13 @@ import { readFileSync } from "fs";
 import { Artifact, ArtifactsResponse } from "./interfaces.js";
 import express from "express";
 import { Logger, logRequestMiddleware } from "./logger/logger.js";
-
+import {
+  ApolloServerPluginLandingPageLocalDefault,
+  ApolloServerPluginLandingPageProductionDefault
+} from '@apollo/server/plugin/landingPage/default';
+import {ApolloServer} from "@apollo/server";
+import {expressMiddleware} from "@apollo/server/express4";
+import http from "http";
 const defaultSuperGraph = readFileSync("./default-super-graph.graphql").toString();
 
 async function fetchArtifacts(): Promise<Response<ArtifactsResponse>> {
@@ -176,26 +181,26 @@ const gateway = new ApolloGateway({
 });
 
 async function start() {
-
     const app = express();
+    const httpServer = http.createServer(app);
 
-    app.use(express.json());
-    app.use(logRequestMiddleware);
-
-    app.listen({ port: config.port }, () => {
-        Logger.info(`Server ready at http://localhost:${config.port}${server.graphqlPath}`);
-    });
+    const plugins = [ApolloServerPluginLandingPageLocalDefault({ embed: true })]
 
     const server = new ApolloServer({
         introspection: true,
-        gateway: gateway
+        gateway: gateway,
+        plugins: plugins
     });
 
     await server.start().then(() => {
         Logger.info("Starting Apollo Server");
     });
 
-    server.applyMiddleware({ app });
+    app.use('/graphql', express.json(), expressMiddleware(server));
+    app.use(logRequestMiddleware);
+
+    await new Promise<void>((resolve) => httpServer.listen({ port: config.port }, resolve));
+    console.log(`🚀 Server ready at http://localhost:${config.port}/graphql`);
 }
 
 start();
