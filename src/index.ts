@@ -9,7 +9,6 @@ import { readFileSync } from "fs";
 import { Artifact, ArtifactsResponse } from "./interfaces.js";
 import express from "express";
 import { Logger, logRequestMiddleware } from "./logger/logger.js";
-import {identity, identityFallback} from "xjoin-subgraph-utils";
 
 const defaultSuperGraph = readFileSync("./default-super-graph.graphql").toString();
 
@@ -182,13 +181,6 @@ async function start() {
 
     app.use(express.json());
     app.use(logRequestMiddleware);
-
-    if (config.env === 'development') {
-        app.use(identityFallback);
-        Logger.warn('Identity fallback enabled, unsafe for production!');
-    }
-
-    app.use(identity);
 
     app.listen({ port: config.port }, () => {
         Logger.info(`Server ready at http://localhost:${config.port}${server.graphqlPath}`);
