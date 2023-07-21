@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { ApolloGateway, IntrospectAndCompose, ServiceDefinition } from "@apollo/gateway";
+import { ApolloGateway, ServiceDefinition } from "@apollo/gateway";
 import config from "./config.js";
 import got, { Response } from "got";
 import { parse } from "graphql";
@@ -9,8 +9,7 @@ import { Artifact, ArtifactsResponse } from "./interfaces.js";
 import express from "express";
 import { Logger, logRequestMiddleware } from "./logger/logger.js";
 import {
-  ApolloServerPluginLandingPageLocalDefault,
-  ApolloServerPluginLandingPageProductionDefault
+  ApolloServerPluginLandingPageLocalDefault
 } from '@apollo/server/plugin/landingPage/default';
 import {ApolloServer} from "@apollo/server";
 import {expressMiddleware} from "@apollo/server/express4";
@@ -147,7 +146,7 @@ const gateway = new ApolloGateway({
                         // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
                         update(compositionResult.supergraphSdl);
                     } else {
-                        Logger.error("Error composing supergraph: " + compositionResult)
+                        Logger.error("Error composing supergraph: " + compositionResult.errors.toString())
                     }
                 } catch (e: any) {
                     Logger.error(e.message);
@@ -166,15 +165,17 @@ const gateway = new ApolloGateway({
                     supergraphSdl: compositionResult.supergraphSdl
                 };
             } else {
-                Logger.error("Error composing supergraph: " + compositionResult)
+                Logger.error("Error composing supergraph: " + compositionResult.errors.toString())
                 return {
-                    supergraphSdl: defaultSuperGraph
+                    supergraphSdl: defaultSuperGraph,
+                    graphRef: "xjoin@prod"
                 };
             }
         } catch (e: any) {
             Logger.error("Error composing supergraph: " + e.message)
             return {
-                supergraphSdl: defaultSuperGraph
+                supergraphSdl: defaultSuperGraph,
+                graphRef: "xjoin@prod"
             };
         }
     },
@@ -196,11 +197,10 @@ async function start() {
         Logger.info("Starting Apollo Server");
     });
 
-    app.use('/graphql', express.json(), expressMiddleware(server));
-    app.use(logRequestMiddleware);
+    app.use('/graphql', express.json(), expressMiddleware(server), logRequestMiddleware);
 
     await new Promise<void>((resolve) => httpServer.listen({ port: config.port }, resolve));
-    console.log(`🚀 Server ready at http://localhost:${config.port}/graphql`);
+    Logger.info(`🚀 Server ready at http://localhost:${config.port}/graphql`);
 }
 
 start();
