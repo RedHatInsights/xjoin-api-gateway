@@ -10,7 +10,7 @@ RUN FULL_RHEL=$(microdnf repolist --enabled | grep rhel-8) ; \
         sed -i 's/^\(enabled.*\)/\1\npriority=200/;' /etc/yum.repos.d/CentOS*.repo ; \
     fi
 
-RUN microdnf module enable nodejs:16 && \
+RUN microdnf module enable nodejs:18 && \
     microdnf install --setopt=tsflags=nodocs -y nodejs && \
     microdnf install -y rsync tar procps-ng && \
     microdnf upgrade -y && \
@@ -18,7 +18,7 @@ RUN microdnf module enable nodejs:16 && \
 
 ADD . $HOME
 
-RUN npm i -g typescript@4.3.5
+RUN npm i -g typescript@5.1.6
 RUN npm i -g
 RUN npm ci && tsc
 
