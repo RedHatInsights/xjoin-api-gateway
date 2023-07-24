@@ -21,6 +21,7 @@ subgraphs defined in an Apicurio schema registry.
 ### Running the server
 Set each environment variable to the value specific to your environment before running the server.
 
+
 ```shell
 npm run start
 ```
