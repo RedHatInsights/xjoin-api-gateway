@@ -35,7 +35,7 @@ objects:
                 path: /graphql?query=%7B__typename%7D
                 port: ${{PORT}}
                 scheme: HTTP
-                headers:
+                httpHeaders:
                   - name: Content-Type
                     value: application/json
               initialDelaySeconds: 10
@@ -48,7 +48,7 @@ objects:
                 path: /graphql?query=%7B__typename%7D
                 port: ${{PORT}}
                 scheme: HTTP
-                headers:
+                httpHeaders:
                   - name: Content-Type
                     value: application/json
               initialDelaySeconds: 10
