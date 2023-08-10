@@ -122,7 +122,6 @@ async function loadSubgraphSchemas(): Promise<ServiceDefinition[]> {
             });
         } catch (err: any) {
             Logger.error(`Failed to fetch artifact details with error: ${err.message}`);
-            throw (err);
         }
     }
 
@@ -141,7 +140,7 @@ const gateway = new ApolloGateway({
             Logger.info(`Fetching Subgraph Schemas every ${interval}ms`)
             setTimeout(async () => {
                 try {
-                    const compositionResult = await composeServices(await loadSubgraphSchemas());
+                    const compositionResult = composeServices(await loadSubgraphSchemas());
                     if (!compositionResult.errors) {
                         // await healthCheck(compositionResult.supergraphSdl) //TODO parameterize so this is disabled in dev, enabled in prod
                         update(compositionResult.supergraphSdl);
@@ -155,11 +154,11 @@ const gateway = new ApolloGateway({
                 poll();
             }, interval);
         };
-        await poll();
+        poll();
 
         //return the initial supergraphSdl upon startup
         try {
-            const compositionResult = await composeServices(await loadSubgraphSchemas());
+            const compositionResult = composeServices(await loadSubgraphSchemas());
             if (!compositionResult.errors) {
                 return {
                     supergraphSdl: compositionResult.supergraphSdl
