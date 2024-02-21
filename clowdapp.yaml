@@ -11,8 +11,6 @@ objects:
       envName: ${ENV_NAME}
       testing:
         iqePlugin: xjoin
-      dependencies:
-        - xjoin-apicurio
       optionalDependencies:
         - xjoin-search
         - host-inventory
