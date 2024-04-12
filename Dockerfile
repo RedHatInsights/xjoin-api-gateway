@@ -16,7 +16,9 @@ RUN microdnf module enable nodejs:18 && \
     microdnf upgrade -y && \
     microdnf clean all
 
-ADD . $HOME
+ADD src/ $HOME/src/
+ADD package.json $HOME/package.json
+ADD package-lock.json $HOME/package-lock.json
 
 RUN npm i -g typescript@5.1.6
 RUN npm i -g
